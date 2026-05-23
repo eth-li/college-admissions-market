@@ -1,0 +1,43 @@
+{
+  "cv_mean_auc": 0.7946,
+  "cv_std_auc": 0.0165,
+  "test_auc_cal": 0.7614,
+  "test_logloss_cal": 0.6276,
+  "test_brier_cal": 0.2104,
+  "n_train": 10231,
+  "n_test": 2568,
+  "n_schools": 167,
+  "bayes_beta": 2.4471528892471497,
+  "ipeds_schools_matched": 166,
+  "feature_cols": [
+    "school",
+    "round_norm",
+    "gender_norm",
+    "race_norm",
+    "field_norm",
+    "school_type_norm",
+    "best_gpa",
+    "gpa_w",
+    "best_score",
+    "act",
+    "income_ord",
+    "round_ord",
+    "school_admit_rate",
+    "ipeds_rate",
+    "score_pctile"
+  ],
+  "xgb_params": {
+    "n_estimators": 600,
+    "learning_rate": 0.05,
+    "max_depth": 5,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "min_child_weight": 5,
+    "reg_alpha": 0.1,
+    "reg_lambda": 1.0,
+    "tree_method": "hist",
+    "enable_categorical": true,
+    "eval_metric": "logloss",
+    "random_state": 42
+  }
+}
