@@ -14,9 +14,16 @@ venv/
 dist/
 .pytest_cache/
 
-# Node
+# Node / Next.js
 node_modules/
-.next/
+frontend/.next/
+frontend/.env.local
+
+# SQLite dev database
+*.db
+
+# Model artifacts (large binaries)
+model/artifacts/*.pkl
 
 # OS
 .DS_Store
