@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { listMarkets } from "@/lib/api";
 import type { Market } from "@/lib/types";
 import MarketCard from "@/components/MarketCard";
@@ -29,16 +28,11 @@ export default function HomePage() {
   return (
     <div className="space-y-6">
       {/* Page header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-100">Markets</h1>
-          <p className="text-sm text-muted mt-0.5">
-            Predict college admissions outcomes
-          </p>
-        </div>
-        <Link href="/markets/new" className="btn-primary">
-          + Create market
-        </Link>
+      <div>
+        <h1 className="text-2xl font-bold text-gray-100">Markets</h1>
+        <p className="text-sm text-muted mt-0.5">
+          Predict college admissions outcomes
+        </p>
       </div>
 
       {/* Filters row */}
@@ -80,11 +74,8 @@ export default function HomePage() {
           <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : markets.length === 0 ? (
-        <div className="text-center py-20 space-y-3">
-          <p className="text-muted text-sm">No markets yet.</p>
-          <Link href="/markets/new" className="btn-primary">
-            Create the first market
-          </Link>
+        <div className="text-center py-20">
+          <p className="text-muted text-sm">No markets found.</p>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

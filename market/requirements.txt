@@ -13,3 +13,6 @@ python-multipart>=0.0.9          # required for FastAPI form data
 
 # ── HTTP client (for testing / future webhooks) ──────────
 httpx>=0.27.0
+
+# ── LLM (extracurricular assessment) ─────────────────────
+anthropic>=0.40.0

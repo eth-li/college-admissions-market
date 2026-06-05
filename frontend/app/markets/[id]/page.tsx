@@ -3,10 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { getMarket, listTrades, resolveMarket } from "@/lib/api";
+import { getMarket, listTrades } from "@/lib/api";
 import type { Market, Trade } from "@/lib/types";
 import TradePanel from "@/components/TradePanel";
-import { getUserId } from "@/lib/user";
 
 function ProbBar({ prob }: { prob: number }) {
   const pct = Math.round(prob * 100);
@@ -35,10 +34,6 @@ export default function MarketPage() {
   const [market, setMarket] = useState<Market | null>(null);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
-  const [resolving, setResolving] = useState(false);
-  const [resolveError, setResolveError] = useState<string | null>(null);
-
-  const userId = getUserId();
 
   const refresh = useCallback(() => {
     getMarket(id).then(setMarket).catch(() => null);
@@ -53,19 +48,6 @@ export default function MarketPage() {
       .finally(() => setLoading(false));
   }, [id, router]);
 
-  async function handleResolve(outcome: "admitted" | "rejected") {
-    if (!userId || !market) return;
-    setResolving(true);
-    setResolveError(null);
-    try {
-      setMarket(await resolveMarket(market.id, outcome, userId));
-    } catch (e: unknown) {
-      setResolveError(e instanceof Error ? e.message : "Failed to resolve.");
-    } finally {
-      setResolving(false);
-    }
-  }
-
   if (loading || !market) {
     return (
       <div className="flex justify-center py-20">
@@ -73,8 +55,6 @@ export default function MarketPage() {
       </div>
     );
   }
-
-  const isCreator = userId === market.creator_id;
 
   return (
     <div className="space-y-6">
@@ -175,26 +155,42 @@ export default function MarketPage() {
             </div>
           )}
 
-          {/* Resolve (creator only) */}
-          {isCreator && market.status === "open" && (
-            <div className="card p-5">
-              <h2 className="text-xs font-semibold uppercase tracking-widest text-muted mb-1">
-                Resolve market
+          {/* LLM assessment */}
+          {(market.extracurriculars || market.llm_summary) && (
+            <div className="card p-5 space-y-4">
+              <h2 className="text-xs font-semibold uppercase tracking-widest text-muted">
+                Extracurricular profile
               </h2>
-              <p className="text-xs text-muted mb-4">
-                You created this market. Winning shareholders receive $1.00 per share.
-              </p>
-              <div className="flex gap-3">
-                <button onClick={() => handleResolve("admitted")} disabled={resolving}
-                  className="flex-1 py-2.5 rounded-xl bg-yes-dim border border-yes/30 text-yes text-sm font-semibold hover:bg-yes hover:text-white transition-all">
-                  ✓ Admitted
-                </button>
-                <button onClick={() => handleResolve("rejected")} disabled={resolving}
-                  className="flex-1 py-2.5 rounded-xl bg-no-dim border border-no/30 text-no text-sm font-semibold hover:bg-no hover:text-white transition-all">
-                  ✗ Rejected
-                </button>
-              </div>
-              {resolveError && <p className="mt-3 text-sm text-no">{resolveError}</p>}
+              {market.llm_score !== null && (
+                <div className="flex items-center gap-3">
+                  <div className="flex gap-1">
+                    {Array.from({ length: 10 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className={`h-2 w-4 rounded-sm ${
+                          i < Math.round(market.llm_score!) ? "bg-indigo-500" : "bg-surface-3"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <span className="text-sm font-semibold tabular-nums text-gray-200">
+                    {market.llm_score.toFixed(1)}<span className="text-muted font-normal">/10</span>
+                  </span>
+                </div>
+              )}
+              {market.llm_summary && (
+                <p className="text-sm text-gray-300 leading-relaxed">{market.llm_summary}</p>
+              )}
+              {market.extracurriculars && (
+                <details className="group">
+                  <summary className="cursor-pointer text-xs text-muted hover:text-gray-300 transition-colors select-none">
+                    Show full profile
+                  </summary>
+                  <p className="mt-2 text-sm text-gray-400 leading-relaxed whitespace-pre-wrap">
+                    {market.extracurriculars}
+                  </p>
+                </details>
+              )}
             </div>
           )}
 

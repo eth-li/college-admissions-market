@@ -45,7 +45,6 @@ export default function Nav() {
         {/* Nav links */}
         <nav className="flex items-center gap-5 flex-1">
           {navLink("/", "Markets")}
-          {navLink("/markets/new", "Create")}
           {username && navLink("/portfolio", "Portfolio")}
         </nav>
 

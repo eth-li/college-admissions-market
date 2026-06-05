@@ -1,5 +1,4 @@
 import type {
-  CreateMarketPayload,
   Market,
   Portfolio,
   Position,
@@ -62,13 +61,6 @@ export const listMarkets = (params?: {
 export const getMarket = (marketId: string) =>
   req<Market>(`/markets/${marketId}`);
 
-export const createMarket = (payload: CreateMarketPayload, userId: string) =>
-  req<Market>("/markets", {
-    method: "POST",
-    body: JSON.stringify(payload),
-    userId,
-  });
-
 export const getQuote = (
   marketId: string,
   side: "yes" | "no",
@@ -77,17 +69,6 @@ export const getQuote = (
   req<PriceQuote>(
     `/markets/${marketId}/quote?side=${side}&budget=${budget}`
   );
-
-export const resolveMarket = (
-  marketId: string,
-  outcome: "admitted" | "rejected",
-  userId: string
-) =>
-  req<Market>(`/markets/${marketId}/resolve`, {
-    method: "POST",
-    body: JSON.stringify({ outcome }),
-    userId,
-  });
 
 // ── Trades ─────────────────────────────────────────────────
 

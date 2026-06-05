@@ -64,14 +64,11 @@ class CreateMarketRequest(BaseModel):
                                          description="Income bracket: 0=low … 5=high")
     flair_field: Optional[str]   = Field(None, description="Intended field: STEM / Art_Hum / SocSci / Bus_Fin")
 
-    # Market liquidity — controls price sensitivity and house risk
-    b: float = Field(
-        100.0, ge=10.0, le=10_000.0,
-        description=(
-            "Liquidity parameter. Higher b → prices move less per trade, "
-            "but the house's maximum possible loss grows (max_loss = b × ln 2). "
-            "Default 100 → max loss ≈ $69 per market."
-        ),
+    # Qualitative profile — fed to the LLM assessor for extracurricular rating
+    extracurriculars: Optional[str] = Field(
+        None,
+        max_length=4000,
+        description="Free-text description of extracurriculars, awards, and achievements",
     )
 
 
@@ -98,6 +95,11 @@ class MarketResponse(BaseModel):
     gpa_uw: Optional[float]
     sat:    Optional[int]
     act:    Optional[int]
+
+    # Qualitative profile
+    extracurriculars: Optional[str]
+    llm_score:        Optional[float]  # 1–10 scale from Claude assessment
+    llm_summary:      Optional[str]    # one-sentence summary from Claude
 
     # Activity metrics
     trade_count:  int

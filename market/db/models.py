@@ -20,7 +20,7 @@ import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import (
-    Float, ForeignKey, Integer, String,
+    Boolean, Float, ForeignKey, Integer, String, Text,
     DateTime, UniqueConstraint,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
@@ -50,6 +50,7 @@ class User(Base):
     email:      Mapped[str]      = mapped_column(String(256),  unique=True, nullable=False)
     # Virtual currency — starts at $1,000; no real money involved
     balance:    Mapped[float]    = mapped_column(Float,        nullable=False, default=1000.0)
+    is_admin:   Mapped[bool]     = mapped_column(Boolean,      nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
     # Relationships (back-populated for convenience)
@@ -84,6 +85,11 @@ class Market(Base):
     # 0 (low income) → 5 (high income), matches model encoding
     flair_field: Mapped[str   | None]  = mapped_column(String(64),  nullable=True)
     # STEM / Art_Hum / SocSci / Bus_Fin
+
+    # ── Qualitative profile ────────────────────────────────────────────────
+    extracurriculars: Mapped[str | None]   = mapped_column(Text,        nullable=True)
+    llm_score:        Mapped[float | None] = mapped_column(Float,       nullable=True)
+    llm_summary:      Mapped[str | None]   = mapped_column(String(512), nullable=True)
 
     # ── LMSR state ─────────────────────────────────────────────────────────
     # These two floats ARE the market. Updated atomically inside a DB

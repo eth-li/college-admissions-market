@@ -21,6 +21,9 @@ export interface Market {
   gpa_uw: number | null;
   sat: number | null;
   act: number | null;
+  extracurriculars: string | null;
+  llm_score: number | null;
+  llm_summary: string | null;
   trade_count: number;
   total_volume: number;
   created_at: string;
@@ -80,16 +83,3 @@ export interface Portfolio {
   unrealized_value: number;
 }
 
-export interface CreateMarketPayload {
-  school: string;
-  round: "EA" | "ED" | "REA" | "RD" | "Rolling" | "QB";
-  gpa_uw?: number;
-  gpa_w?: number;
-  sat?: number;
-  act?: number;
-  gender?: string;
-  race?: string;
-  income_ord?: number;
-  flair_field?: string;
-  b?: number;
-}

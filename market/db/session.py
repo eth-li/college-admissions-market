@@ -11,6 +11,7 @@ The rest of the codebase doesn't need to change — SQLAlchemy handles the diale
 
 import os
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -42,13 +43,28 @@ AsyncSessionLocal = async_sessionmaker(
 )
 
 
+_MIGRATIONS = [
+    "ALTER TABLE users ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT 0",
+    "ALTER TABLE markets ADD COLUMN extracurriculars TEXT",
+    "ALTER TABLE markets ADD COLUMN llm_score REAL",
+    "ALTER TABLE markets ADD COLUMN llm_summary VARCHAR(512)",
+]
+
+
 async def create_tables() -> None:
     """
-    Create all tables defined in models.py if they don't exist.
-    Idempotent — safe to call on every application startup.
+    Create all tables defined in models.py if they don't exist, then apply
+    any additive column migrations for existing databases.  Safe to call on
+    every startup — missing tables are created, new columns are added, and
+    already-present columns are silently skipped.
     """
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        for sql in _MIGRATIONS:
+            try:
+                await conn.execute(text(sql))
+            except Exception:
+                pass  # column already exists
 
 
 async def get_db():

@@ -3,16 +3,13 @@ markets.py — Market lifecycle endpoints.
 
 Routes
 ------
-POST /markets                       Create market (ML model seeds opening price)
 GET  /markets                       List markets (filter by school / status)
 GET  /markets/{id}                  Market detail + live price
 GET  /markets/{id}/quote            Price quote preview (no DB write)
-POST /markets/{id}/resolve          Resolve with actual outcome; pay winners
+POST /markets/{id}/resolve          Resolve with actual outcome; pay winners (admin only)
 """
 
 from __future__ import annotations
-
-import math
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -22,7 +19,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from market.api.deps import get_current_user
 from market.api.schemas import (
-    CreateMarketRequest,
     MarketResponse,
     PriceQuote,
     ResolveMarketRequest,
@@ -31,7 +27,6 @@ from market.core.lmsr import (
     max_loss,
     price,
     price_after_trade,
-    seed_state,
     shares_for_budget,
     trade_cost,
 )
@@ -39,45 +34,6 @@ from market.db.models import Market, Position, Trade, User
 from market.db.session import get_db
 
 router = APIRouter(prefix="/markets", tags=["markets"])
-
-
-# ──────────────────────────────────────────────────────────
-# ML model integration
-# ──────────────────────────────────────────────────────────
-
-def _ml_predict(req: CreateMarketRequest) -> Optional[float]:
-    """
-    Call the trained XGBoost + Bayesian model to get P(admitted).
-
-    Returns None gracefully if:
-    - Model artifacts haven't been trained yet (`python3 model/train.py`)
-    - The school name isn't in the training data
-    - Any other runtime error
-
-    When None is returned, the market falls back to p = 0.50 as the
-    opening price — fully neutral, no model bias.
-    """
-    try:
-        from model.predict import load_model, predict_admission
-        artifacts = load_model()
-        prob = predict_admission(
-            artifacts,
-            school      = req.school,
-            gpa_uw      = req.gpa_uw,
-            gpa_w       = req.gpa_w,
-            sat         = req.sat,
-            act         = req.act,
-            round_      = req.round,
-            gender      = req.gender,
-            race        = req.race,
-            income_ord  = req.income_ord,
-            flair_field = req.flair_field,
-        )
-        # Clamp to a reasonable range — very extreme probabilities (< 1% or > 99%)
-        # can cause the LMSR seed to overflow the binary search upper bound.
-        return float(max(0.01, min(0.99, prob)))
-    except Exception:
-        return None
 
 
 # ──────────────────────────────────────────────────────────
@@ -103,79 +59,28 @@ async def _market_response(market: Market, db: AsyncSession) -> MarketResponse:
     price_change  = round(current_price - ml_p, 4) if ml_p is not None else None
 
     return MarketResponse(
-        id            = market.id,
-        creator_id    = market.creator_id,
-        school        = market.school,
-        round         = market.round,
-        current_price = round(current_price, 4),
-        ml_prob       = round(ml_p, 4) if ml_p is not None else None,
-        price_change  = price_change,
-        b             = market.b,
-        max_loss      = round(max_loss(market.b), 2),
-        status        = market.status,
-        outcome       = market.outcome,
-        gpa_uw        = market.gpa_uw,
-        sat           = market.sat,
-        act           = market.act,
-        trade_count   = trade_count,
-        total_volume  = round(total_volume, 2),
-        created_at    = market.created_at,
-        resolved_at   = market.resolved_at,
+        id               = market.id,
+        creator_id       = market.creator_id,
+        school           = market.school,
+        round            = market.round,
+        current_price    = round(current_price, 4),
+        ml_prob          = round(ml_p, 4) if ml_p is not None else None,
+        price_change     = price_change,
+        b                = market.b,
+        max_loss         = round(max_loss(market.b), 2),
+        status           = market.status,
+        outcome          = market.outcome,
+        gpa_uw           = market.gpa_uw,
+        sat              = market.sat,
+        act              = market.act,
+        extracurriculars = market.extracurriculars,
+        llm_score        = market.llm_score,
+        llm_summary      = market.llm_summary,
+        trade_count      = trade_count,
+        total_volume     = round(total_volume, 2),
+        created_at       = market.created_at,
+        resolved_at      = market.resolved_at,
     )
-
-
-# ──────────────────────────────────────────────────────────
-# POST /markets  — create
-# ──────────────────────────────────────────────────────────
-
-@router.post("", response_model=MarketResponse, status_code=201)
-async def create_market(
-    body:         CreateMarketRequest,
-    current_user: User           = Depends(get_current_user),
-    db:           AsyncSession   = Depends(get_db),
-):
-    """
-    Create a new prediction market for a college application.
-
-    **What happens:**
-    1. The ML model (XGBoost + Bayesian calibration) predicts P(admitted)
-       from the student stats you provide.
-    2. `seed_state(ml_prob, b)` converts that probability into the initial
-       LMSR state `(q_yes, q_no)` so the market opens exactly at the model's
-       estimate.
-    3. The market is persisted and immediately open for trading.
-
-    If no student stats are provided, only the school name is used
-    (returns the school's Bayesian baseline from IPEDS data).
-    If the ML model isn't available, the market opens at 50/50.
-    """
-    ml_prob       = _ml_predict(body)
-    opening_price = ml_prob if ml_prob is not None else 0.5
-
-    q_yes, q_no   = seed_state(opening_price, body.b)
-
-    market = Market(
-        creator_id  = current_user.id,
-        school      = body.school,
-        round       = body.round,
-        gpa_uw      = body.gpa_uw,
-        gpa_w       = body.gpa_w,
-        sat         = body.sat,
-        act         = body.act,
-        gender      = body.gender,
-        race        = body.race,
-        income_ord  = body.income_ord,
-        flair_field = body.flair_field,
-        b           = body.b,
-        q_yes       = q_yes,
-        q_no        = q_no,
-        ml_prob     = ml_prob,
-    )
-    db.add(market)
-    await db.commit()
-    await db.refresh(market)
-
-    return await _market_response(market, db)
 
 
 # ──────────────────────────────────────────────────────────
@@ -293,8 +198,8 @@ async def resolve_market(
     market = result.scalar_one_or_none()
     if not market:
         raise HTTPException(status_code=404, detail="Market not found.")
-    if market.creator_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Only the market creator can resolve it.")
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Only house admins can resolve markets.")
     if market.status != "open":
         raise HTTPException(status_code=409, detail=f"Market is already '{market.status}'.")
 
