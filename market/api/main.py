@@ -13,6 +13,7 @@ Alternative JSON schema explorer:
   http://localhost:8000/redoc
 """
 
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -104,12 +105,13 @@ current_price = e^(q_yes/b) / (e^(q_yes/b) + e^(q_no/b))
 # CORS — allow the Next.js frontend on any local port
 # ──────────────────────────────────────────────────────────
 
+_origins = ["http://localhost:3000", "http://localhost:3001"]
+if _frontend_url := os.getenv("FRONTEND_URL"):
+    _origins.append(_frontend_url.rstrip("/"))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:3001",
-    ],
+    allow_origins=_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -20,10 +20,13 @@ from sqlalchemy.ext.asyncio import (
 
 from market.db.models import Base
 
-DATABASE_URL: str = os.getenv(
-    "DATABASE_URL",
-    "sqlite+aiosqlite:///./market.db",
-)
+_raw_url = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./market.db")
+
+# Railway (and Heroku) give postgresql:// but asyncpg requires postgresql+asyncpg://
+if _raw_url.startswith("postgresql://"):
+    _raw_url = _raw_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+DATABASE_URL: str = _raw_url
 
 # SQLite needs check_same_thread=False when used with async; Postgres doesn't.
 _connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
