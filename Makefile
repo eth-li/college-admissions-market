@@ -7,7 +7,7 @@ UVICORN   = $(VENV)/bin/uvicorn
 
 # ── First-time setup ──────────────────────────────────────────────────────────
 setup:
-	python -m venv $(VENV)
+	python3 -m venv $(VENV)
 	$(PIP) install --upgrade pip
 	$(PIP) install -r market/requirements.txt
 	$(PIP) install -r model/requirements.txt
