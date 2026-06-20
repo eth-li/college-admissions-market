@@ -19,8 +19,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from market.core.llm_assessor import assess_extracurriculars, blend_probability
 from market.core.lmsr import seed_state
-from market.db.models import Market, User
-from market.db.session import AsyncSessionLocal, create_tables
+from market.db.models import Base, Market, User
+from market.db.session import AsyncSessionLocal, create_tables, engine
 
 # ── House admin ───────────────────────────────────────────────────────────────
 
@@ -252,10 +252,13 @@ def ml_predict(p: dict) -> float | None:
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 async def main() -> None:
+    # Drop all tables then recreate — works for both SQLite and Postgres.
+    # This replaces the old SQLite-only file-delete approach.
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
     db_path = "market.db"
     if os.path.exists(db_path):
         os.remove(db_path)
-        print(f"Wiped {db_path}")
 
     await create_tables()
     print("Tables ready\n")
