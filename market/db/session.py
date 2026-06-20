@@ -63,11 +63,16 @@ async def create_tables() -> None:
     """
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        for sql in _MIGRATIONS:
-            try:
+
+    # Each migration runs in its own transaction so a failure (e.g. column
+    # already exists) only rolls back that statement, not the create_all above.
+    # In Postgres any error aborts the whole transaction; SQLite is more lenient.
+    for sql in _MIGRATIONS:
+        try:
+            async with engine.begin() as conn:
                 await conn.execute(text(sql))
-            except Exception:
-                pass  # column already exists
+        except Exception:
+            pass  # column already exists
 
 
 async def get_db():
