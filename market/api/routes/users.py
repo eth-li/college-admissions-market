@@ -4,18 +4,37 @@ users.py — User account and portfolio endpoints.
 Routes
 ------
 POST /users                 Create a new account (get $1,000 starting balance)
+POST /users/login           Sign in with username + password; returns user record
 GET  /users/{id}            Get user profile + current balance
 GET  /users/{id}/portfolio  All open positions with live P&L
 """
+
+import hashlib
+import secrets
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from market.api.schemas import CreateUserRequest, PortfolioResponse, PositionSummary, UserResponse
+from market.api.schemas import CreateUserRequest, LoginRequest, PortfolioResponse, PositionSummary, UserResponse
 from market.core.lmsr import price as lmsr_price
 from market.db.models import Market, Position, User
 from market.db.session import get_db
+
+
+def _hash_password(password: str) -> str:
+    salt = secrets.token_hex(16)
+    h = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 260_000)
+    return f"{salt}:{h.hex()}"
+
+
+def _verify_password(password: str, stored: str) -> bool:
+    try:
+        salt, expected = stored.split(":", 1)
+    except ValueError:
+        return False
+    h = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 260_000)
+    return secrets.compare_digest(h.hex(), expected)
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -46,11 +65,29 @@ async def create_user(
             detail="Username or email is already taken.",
         )
 
-    user = User(username=body.username, email=body.email)
+    user = User(username=body.username, email=body.email,
+                password_hash=_hash_password(body.password))
     db.add(user)
     await db.commit()
     await db.refresh(user)
 
+    return UserResponse.model_validate(user)
+
+
+# ──────────────────────────────────────────────────────────
+# POST /users/login  — sign in
+# ──────────────────────────────────────────────────────────
+
+@router.post("/login", response_model=UserResponse)
+async def login_user(body: LoginRequest, db: AsyncSession = Depends(get_db)):
+    """
+    Sign in with username and password.
+    Returns the user record (including the ID needed for subsequent requests).
+    """
+    result = await db.execute(select(User).where(User.username == body.username))
+    user = result.scalar_one_or_none()
+    if not user or not user.password_hash or not _verify_password(body.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid username or password.")
     return UserResponse.model_validate(user)
 
 

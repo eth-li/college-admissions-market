@@ -30,10 +30,16 @@ async function req<T>(
 
 // ── Users ──────────────────────────────────────────────────
 
-export const createUser = (username: string, email: string) =>
+export const createUser = (username: string, email: string, password: string) =>
   req<User>("/users", {
     method: "POST",
-    body: JSON.stringify({ username, email }),
+    body: JSON.stringify({ username, email, password }),
+  });
+
+export const loginUser = (username: string, password: string) =>
+  req<User>("/users/login", {
+    method: "POST",
+    body: JSON.stringify({ username, password }),
   });
 
 export const getUser = (userId: string) => req<User>(`/users/${userId}`);

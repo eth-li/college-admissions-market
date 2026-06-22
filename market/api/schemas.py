@@ -28,6 +28,13 @@ class CreateUserRequest(BaseModel):
                           description="Unique display name")
     email:    str = Field(..., pattern=r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
                           description="Email address (must be unique)")
+    password: str = Field(..., min_length=6, max_length=128,
+                          description="Password (min 6 characters)")
+
+
+class LoginRequest(BaseModel):
+    username: str = Field(..., description="Username")
+    password: str = Field(..., description="Password")
 
 
 class UserResponse(BaseModel):

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createUser } from "@/lib/api";
+import { createUser, loginUser } from "@/lib/api";
 import { setUserId } from "@/lib/user";
 
 export default function LoginPage() {
@@ -10,16 +10,20 @@ export default function LoginPage() {
   const [tab, setTab] = useState<"register" | "login">("register");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
-  const [loginId, setLoginId] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function reset() {
+    setUsername(""); setEmail(""); setPassword(""); setError(null);
+  }
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
     try {
-      const user = await createUser(username, email);
+      const user = await createUser(username, email, password);
       setUserId(user.id);
       router.push("/");
     } catch (err: unknown) {
@@ -29,11 +33,19 @@ export default function LoginPage() {
     }
   }
 
-  function handleLogin(e: React.FormEvent) {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
-    if (!loginId.trim()) return;
-    setUserId(loginId.trim());
-    router.push("/");
+    setLoading(true);
+    setError(null);
+    try {
+      const user = await loginUser(username, password);
+      setUserId(user.id);
+      router.push("/");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Sign-in failed.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -51,7 +63,7 @@ export default function LoginPage() {
         {(["register", "login"] as const).map((t) => (
           <button
             key={t}
-            onClick={() => { setTab(t); setError(null); }}
+            onClick={() => { setTab(t); reset(); }}
             className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${
               tab === t ? "bg-surface text-gray-100 shadow-sm" : "text-muted hover:text-gray-300"
             }`}
@@ -75,6 +87,12 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com" required />
           </div>
+          <div>
+            <label className="label">Password</label>
+            <input type="password" className="input" value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Min 6 characters" minLength={6} required />
+          </div>
           {error && (
             <div className="rounded-lg bg-no-dim border border-no/30 px-4 py-2.5 text-sm text-no">
               {error}
@@ -90,16 +108,24 @@ export default function LoginPage() {
       ) : (
         <form onSubmit={handleLogin} className="card p-6 space-y-4">
           <div>
-            <label className="label">Your user ID</label>
-            <input className="input font-mono text-xs" value={loginId}
-              onChange={(e) => setLoginId(e.target.value)}
-              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" required />
+            <label className="label">Username</label>
+            <input className="input" value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="yourname" required />
           </div>
-          <p className="text-xs text-muted">
-            Your ID was shown when you registered. Paste it here to resume your session.
-          </p>
-          <button type="submit" className="btn-primary w-full py-2.5">
-            Sign in
+          <div>
+            <label className="label">Password</label>
+            <input type="password" className="input" value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Your password" required />
+          </div>
+          {error && (
+            <div className="rounded-lg bg-no-dim border border-no/30 px-4 py-2.5 text-sm text-no">
+              {error}
+            </div>
+          )}
+          <button type="submit" disabled={loading} className="btn-primary w-full py-2.5">
+            {loading ? "Signing in…" : "Sign in"}
           </button>
         </form>
       )}

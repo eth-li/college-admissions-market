@@ -45,13 +45,14 @@ class Base(DeclarativeBase):
 class User(Base):
     __tablename__ = "users"
 
-    id:         Mapped[str]      = mapped_column(String,       primary_key=True, default=_uuid)
-    username:   Mapped[str]      = mapped_column(String(64),   unique=True, nullable=False)
-    email:      Mapped[str]      = mapped_column(String(256),  unique=True, nullable=False)
+    id:            Mapped[str]           = mapped_column(String,       primary_key=True, default=_uuid)
+    username:      Mapped[str]           = mapped_column(String(64),   unique=True, nullable=False)
+    email:         Mapped[str]           = mapped_column(String(256),  unique=True, nullable=False)
+    password_hash: Mapped[str | None]    = mapped_column(String(256),  nullable=True)
     # Virtual currency — starts at $1,000; no real money involved
-    balance:    Mapped[float]    = mapped_column(Float,        nullable=False, default=1000.0)
-    is_admin:   Mapped[bool]     = mapped_column(Boolean,      nullable=False, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    balance:       Mapped[float]         = mapped_column(Float,        nullable=False, default=1000.0)
+    is_admin:      Mapped[bool]          = mapped_column(Boolean,      nullable=False, default=False)
+    created_at:    Mapped[datetime]      = mapped_column(DateTime(timezone=True), default=_now)
 
     # Relationships (back-populated for convenience)
     markets:   list["Market"]   = relationship("Market",   back_populates="creator",
