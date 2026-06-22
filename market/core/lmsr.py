@@ -133,6 +133,26 @@ def max_loss(b: float) -> float:
     return b * math.log(2.0)
 
 
+def entropy_scaled_b(prob: float, b_max: float) -> float:
+    """
+    Choose b proportional to the binary entropy of the opening probability.
+
+    H(p) = -p·ln(p) - (1-p)·ln(1-p)  ∈ [0, ln(2)]
+
+    b = b_max · H(p) / ln(2)
+
+    At p=0.5 (maximum uncertainty) → b = b_max.
+    As p → 0 or 1 (near-certain)   → b → 0.
+
+    This keeps max_loss = b · ln(2) = b_max · H(p), so the house spends its
+    subsidy budget proportionally to how much price discovery each market can
+    generate.
+    """
+    prob = max(_EPS, min(1.0 - _EPS, prob))
+    h = -prob * math.log(prob) - (1.0 - prob) * math.log(1.0 - prob)
+    return b_max * h / math.log(2.0)
+
+
 # ──────────────────────────────────────────────────────────
 # Budget ↔ shares conversion
 # ──────────────────────────────────────────────────────────
