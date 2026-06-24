@@ -17,7 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from market.api.schemas import CreateUserRequest, LoginRequest, PortfolioResponse, PositionSummary, UserResponse
-from market.core.lmsr import price as lmsr_price
+from market.core.lmsr import liquidation_value, price as lmsr_price
 from market.db.models import Market, Position, User
 from market.db.session import get_db
 
@@ -137,8 +137,20 @@ async def get_portfolio(user_id: str, db: AsyncSession = Depends(get_db)):
     for pos, market in rows:
         p = lmsr_price(market.q_yes, market.q_no, market.b)
 
-        # Current market value of this position
-        current_value = pos.yes_shares * p + pos.no_shares * (1.0 - p)
+        if market.status == "resolved":
+            # Payout has already been credited; show the settled value.
+            if market.outcome == "admitted":
+                current_value = pos.yes_shares
+            elif market.outcome == "rejected":
+                current_value = pos.no_shares
+            else:
+                current_value = 0.0
+        else:
+            # True LMSR liquidation: accounts for price impact of selling.
+            current_value = liquidation_value(
+                market.q_yes, market.q_no, market.b,
+                pos.yes_shares, pos.no_shares,
+            )
         unrealized_pnl = current_value - pos.cost_basis
 
         # Only count open markets in the unrealised total

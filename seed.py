@@ -294,7 +294,7 @@ async def main() -> None:
                 opening = base_prob
             print(f"    Opening   : {opening:.3f}  ({opening*100:.1f}% YES)\n")
 
-            b = entropy_scaled_b(opening, b_max=100.0)
+            b = entropy_scaled_b(opening, b_max=500.0)
             q_yes, q_no = seed_state(opening, b)
             print(f"    b         : {b:.1f}  (max loss ${b * 0.6931:.2f})")
 

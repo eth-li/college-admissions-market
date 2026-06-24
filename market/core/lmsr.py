@@ -133,6 +133,25 @@ def max_loss(b: float) -> float:
     return b * math.log(2.0)
 
 
+def liquidation_value(
+    q_yes: float,
+    q_no: float,
+    b: float,
+    yes_shares: float,
+    no_shares: float,
+) -> float:
+    """
+    True value of a position if liquidated right now.
+
+    Equals C(q_yes, q_no) − C(q_yes − yes_shares, q_no − no_shares).
+
+    This accounts for the price impact of selling all shares, unlike the
+    naive approximation (yes_shares * p + no_shares * (1 − p)) which
+    treats every share as sellable at the current marginal price.
+    """
+    return cost(q_yes, q_no, b) - cost(q_yes - yes_shares, q_no - no_shares, b)
+
+
 def entropy_scaled_b(prob: float, b_max: float) -> float:
     """
     Choose b proportional to the binary entropy of the opening probability.

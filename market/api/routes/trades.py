@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from market.api.deps import get_current_user
 from market.api.schemas import BuyRequest, SellRequest, TradeResponse
-from market.core.lmsr import new_state, price, shares_for_budget, trade_cost
+from market.core.lmsr import liquidation_value, new_state, price, shares_for_budget, trade_cost
 from market.db.models import Market, Position, Trade, User
 from market.db.session import get_db
 
@@ -322,7 +322,18 @@ async def get_position(
             "unrealized_pnl": 0.0,
         }
 
-    current_value  = pos.yes_shares * p + pos.no_shares * (1.0 - p)
+    if market.status == "resolved":
+        if market.outcome == "admitted":
+            current_value = pos.yes_shares
+        elif market.outcome == "rejected":
+            current_value = pos.no_shares
+        else:
+            current_value = 0.0
+    else:
+        current_value = liquidation_value(
+            market.q_yes, market.q_no, market.b,
+            pos.yes_shares, pos.no_shares,
+        )
     unrealized_pnl = current_value - pos.cost_basis
 
     return {
