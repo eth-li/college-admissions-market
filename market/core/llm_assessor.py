@@ -38,7 +38,8 @@ applicant to {school} on a scale of 1–10:
   10   exceptional — nationally/internationally recognised achievements
 
 Respond with valid JSON only (no markdown fences):
-{{"score": <integer 1-10>, "summary": "<one or two sentences summarising the profile's strengths and weaknesses>"}}"""
+{{"score": <integer 1-10>, "bullets": ["<strength or weakness, one concise phrase>", "<another point>", "<another point>"]}}
+Provide 3–4 bullet points. Each bullet should be a short phrase (not a full sentence)."""
 
 
 async def assess_extracurriculars(
@@ -75,7 +76,9 @@ async def assess_extracurriculars(
         raw = message.content[0].text.strip()
         data = json.loads(raw)
         score   = float(max(1, min(10, data["score"])))
-        summary = str(data.get("summary", ""))[:512] or None
+        bullets = data.get("bullets") or []
+        summary = "\n".join(f"• {b.strip().rstrip('.')}" for b in bullets if b.strip())
+        summary = summary[:512] or None
         return score, summary
     except Exception as exc:
         logger.warning("LLM assessor failed: %s", exc)

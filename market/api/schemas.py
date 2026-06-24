@@ -99,9 +99,14 @@ class MarketResponse(BaseModel):
     outcome: Optional[str]  # null until resolved; "admitted" | "rejected"
 
     # Student profile snapshot
-    gpa_uw: Optional[float]
-    sat:    Optional[int]
-    act:    Optional[int]
+    gpa_uw:      Optional[float]
+    gpa_w:       Optional[float]
+    sat:         Optional[int]
+    act:         Optional[int]
+    gender:      Optional[str]
+    race:        Optional[str]
+    income_ord:  Optional[int]
+    flair_field: Optional[str]
 
     # Qualitative profile
     extracurriculars: Optional[str]
