@@ -18,7 +18,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from market.core.llm_assessor import assess_extracurriculars, blend_probability
-from market.core.lmsr import entropy_scaled_b, seed_state
+from market.core.lmsr import confidence_scaled_b, expected_subsidy, seed_state
 from market.db.models import Base, Market, User
 from market.db.session import AsyncSessionLocal, create_tables, engine
 
@@ -294,9 +294,9 @@ async def main() -> None:
                 opening = base_prob
             print(f"    Opening   : {opening:.3f}  ({opening*100:.1f}% YES)\n")
 
-            b = entropy_scaled_b(opening, b_max=500.0)
+            b = confidence_scaled_b(opening, b_base=500.0, b_cap=1500.0)
             q_yes, q_no = seed_state(opening, b)
-            print(f"    b         : {b:.1f}  (max loss ${b * 0.6931:.2f})")
+            print(f"    b         : {b:.1f}  (expected subsidy ${expected_subsidy(opening, b):.2f})")
 
             market = Market(
                 creator_id       = house.id,

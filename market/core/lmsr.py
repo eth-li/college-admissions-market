@@ -152,24 +152,54 @@ def liquidation_value(
     return cost(q_yes, q_no, b) - cost(q_yes - yes_shares, q_no - no_shares, b)
 
 
-def entropy_scaled_b(prob: float, b_max: float) -> float:
+def confidence_scaled_b(
+    prob:   float,
+    b_base: float = 500.0,
+    b_cap:  float = 1500.0,
+) -> float:
     """
-    Choose b proportional to the binary entropy of the opening probability.
+    Choose b inversely proportional to the binary entropy of the opening
+    probability, so that confident markets are harder to move.
 
-    H(p) = -p·ln(p) - (1-p)·ln(1-p)  ∈ [0, ln(2)]
+    H(p) = -p·ln(p) - (1-p)·ln(1-p)  ∈ (0, ln(2)]
 
-    b = b_max · H(p) / ln(2)
+    b = min( b_base · ln(2) / H(p),  b_cap )
 
-    At p=0.5 (maximum uncertainty) → b = b_max.
-    As p → 0 or 1 (near-certain)   → b → 0.
+    At p=0.5 (maximum uncertainty) → b = b_base — the market is cheap to move.
+    As p → 0 or 1 (near-certain)   → b rises toward b_cap.
 
-    This keeps max_loss = b · ln(2) = b_max · H(p), so the house spends its
-    subsidy budget proportionally to how much price discovery each market can
-    generate.
+    Why inverse entropy
+    -------------------
+    Price rigidity is linear in b: pushing the price from p₀ to p₁ costs
+    b · ln((1-p₀)/(1-p₁)).  An extreme opening probability means the model is
+    confident, so traders should have to pay more to move it.
+
+    The house's *expected* subsidy is exactly b · H(p₀) — the loss if informed
+    traders drive the market to the truth is b · ln(1/p₀) when it resolves YES
+    and b · ln(1/(1-p₀)) when it resolves NO, weighted by p₀.  Setting
+    b ∝ 1/H(p) therefore holds the expected subsidy constant at b_base · ln(2)
+    across every market; only the *conditional* loss from a wrong prior grows.
+
+    b_cap bounds that wrong-prior risk: without it H → 0 sends b → ∞.  The
+    number to size it against is b_cap · ln(1/p₀), the house's loss on a
+    confident market that resolves the other way.
     """
     prob = max(_EPS, min(1.0 - _EPS, prob))
     h = -prob * math.log(prob) - (1.0 - prob) * math.log(1.0 - prob)
-    return b_max * h / math.log(2.0)
+    return min(b_base * math.log(2.0) / h, b_cap)
+
+
+def expected_subsidy(prob: float, b: float) -> float:
+    """
+    Expected house loss for a market seeded at `prob`, assuming informed traders
+    drive the price to the true outcome:  b · H(prob).
+
+    Unlike max_loss (the unconditional b · ln(2) bound) this is tight for
+    markets seeded away from 0.5.
+    """
+    prob = max(_EPS, min(1.0 - _EPS, prob))
+    h = -prob * math.log(prob) - (1.0 - prob) * math.log(1.0 - prob)
+    return b * h
 
 
 # ──────────────────────────────────────────────────────────
